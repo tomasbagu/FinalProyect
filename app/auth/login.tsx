@@ -15,7 +15,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     const ok = await loginCaregiver(email, password);
     if (ok) {
-      router.replace('//(app)/cuidador/caregiver');
+      router.replace('../(app)/cuidador/caregiver');
     } else {
       Alert.alert('Error', 'Email o contraseña incorrectos.');
     }

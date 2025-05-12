@@ -16,7 +16,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     const ok = await registerCaregiver(name, email, password);
     if (ok) {
-      router.replace('//(app)/cuidador/caregiver');
+      router.replace('../auth/login');
     } else {
       Alert.alert('Error', 'No se pudo registrar. Verifica tus datos.');
     }
