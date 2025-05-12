@@ -1,30 +1,29 @@
-// src/contexts/AuthContext.tsx
-import React, { createContext, useState, useEffect } from 'react';
+// context/AuthContext.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createUserWithEmailAndPassword,
+  User as FirebaseUser,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile,
-  onAuthStateChanged,
-  User as FirebaseUser
+  updateProfile
 } from 'firebase/auth';
 import {
-  doc,
-  setDoc,
-  getDoc,
   collection,
+  doc,
+  getDoc,
+  getDocs,
   query,
-  where,
-  getDocs
+  setDoc,
+  where
 } from 'firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import React, { createContext, useEffect, useState } from 'react';
 import { auth, db } from '../utils/Firebase';
 
 type Role = 'familiar' | 'caregiver' | 'elder';
 
 interface ElderData {
-  uid: string;          // Firestore doc ID
+  uid: string;
   name: string;
   role: 'elder';
   code: string;
@@ -51,22 +50,20 @@ const ELDER_CODE_KEY = '@elder_code';
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
 
-  // 1) Reactiva sesión al arrancar:
   useEffect(() => {
-    // a) Chequea sesión Firebase (familiar / caregiver)
     const unsub = onAuthStateChanged(auth, async fbUser => {
       if (fbUser) {
-        // trae datos de perfil + role
         const docSnap = await getDoc(doc(db, 'users', fbUser.uid));
         if (docSnap.exists()) {
           setCurrentUser(fbUser);
           return;
         }
       }
-      // b) Si no hay usuario Firebase, mira si hay código de adultomayor en AsyncStorage
+      // si no es firebase-user, intento elder
       const savedCode = await AsyncStorage.getItem(ELDER_CODE_KEY);
       if (savedCode) {
-        await _loginElderInternal(savedCode);
+        const ok = await _loginElderInternal(savedCode);
+        if (!ok) setCurrentUser(null);
       } else {
         setCurrentUser(null);
       }
@@ -74,7 +71,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     return () => unsub();
   }, []);
 
-  // ——— Familiar / Caregiver ———
   const _registerCommon = async (
     name: string,
     email: string,
@@ -98,51 +94,29 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
-  const registerFamiliar = (name: string, email: string, pass: string) =>
-    _registerCommon(name, email, pass, 'familiar');
+  const registerFamiliar = (n: string, e: string, p: string) =>
+    _registerCommon(n, e, p, 'familiar');
+  const registerCaregiver = (n: string, e: string, p: string) =>
+    _registerCommon(n, e, p, 'caregiver');
 
-  const registerCaregiver = (name: string, email: string, pass: string) =>
-    _registerCommon(name, email, pass, 'caregiver');
-
-  const loginCommon = async (email: string, pass: string) => {
+  const loginCommon = async (email: string, pass: string): Promise<boolean> => {
     try {
       const resp = await signInWithEmailAndPassword(auth, email, pass);
-      return !!resp.user;
+      const uid = resp.user.uid;
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (!snap.exists()) return false;
+      await setDoc(doc(db, 'users', uid), { lastLogin: new Date() }, { merge: true });
+      setCurrentUser(resp.user);
+      return true;
     } catch (e) {
       console.error('Login error', e);
       return false;
     }
   };
 
-  const loginFamiliar = (email: string, pass: string) => loginCommon(email, pass);
-  const loginCaregiver = (email: string, pass: string) => loginCommon(email, pass);
+  const loginFamiliar   = (e: string, p: string) => loginCommon(e, p);
+  const loginCaregiver  = (e: string, p: string) => loginCommon(e, p);
 
-  // ——— Elder (Adulto Mayor) ———
-  // Interno: busca en Firestore el doc de elder by code y setea currentUser
-  const _loginElderInternal = async (code: string): Promise<boolean> => {
-    const q = query(collection(db, 'elders'), where('code', '==', code));
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      return false;
-    }
-    const docSnap = snap.docs[0];
-    const data = docSnap.data() as Omit<ElderData, 'uid'>;
-    setCurrentUser({
-      uid: docSnap.id,
-      ...data
-    });
-    return true;
-  };
-
-  const loginElder = async (code: string): Promise<boolean> => {
-    const ok = await _loginElderInternal(code);
-    if (ok) {
-      await AsyncStorage.setItem(ELDER_CODE_KEY, code);
-    }
-    return ok;
-  };
-
-  // Registra un adulto mayor: genera o usa un code, lo guarda en 'elders'
   const registerElder = async (
     name: string,
     caregiverId: string,
@@ -160,16 +134,28 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       });
       return newCode;
     } catch (e) {
-      console.error('Error registrando elder', e);
+      console.error(e);
       return null;
     }
   };
 
-  // ——— Logout para todos ———
+  const _loginElderInternal = async (code: string): Promise<boolean> => {
+    const q = query(collection(db, 'elders'), where('code', '==', code));
+    const snap = await getDocs(q);
+    if (snap.empty) return false;
+    const d = snap.docs[0].data() as Omit<ElderData, 'uid'>;
+    setCurrentUser({ uid: snap.docs[0].id, ...d });
+    return true;
+  };
+
+  const loginElder = async (code: string): Promise<boolean> => {
+    const ok = await _loginElderInternal(code);
+    if (ok) await AsyncStorage.setItem(ELDER_CODE_KEY, code);
+    return ok;
+  };
+
   const logout = async () => {
-    // Borra sesión elder
     await AsyncStorage.removeItem(ELDER_CODE_KEY);
-    // Cierra sesión Firebase
     await signOut(auth);
     setCurrentUser(null);
   };
