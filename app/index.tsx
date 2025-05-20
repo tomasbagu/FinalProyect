@@ -1,8 +1,7 @@
 // app/auth/WelcomeScreen.js
-
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { BackHandler, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -18,22 +17,30 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       {/* Sección superior púrpura con logo */}
       <View style={styles.top}>
-        {/* Reemplaza source por la ruta de tu logo si lo tienes como asset */}
+        {/* Coloca aquí tu logo si lo tienes */}
       </View>
 
       {/* Sección inferior blanca con texto y botones */}
       <View style={styles.bottom}>
         <Text style={styles.subtitle}>¡Ingresa a Vivo+!</Text>
+
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push('/auth/login')}
+          onPress={() => router.replace('/auth/login')}
         >
           <Text style={styles.primaryButtonText}>Inicio de Sesión</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/auth/register')}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => router.replace('/auth/elderLogin')}
+        >
+          <Text style={styles.primaryButtonText}>Adulto Mayor</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.replace('/auth/register')}>
           <Text style={styles.linkText}>
-            Ya tienes cuenta? <Text style={styles.linkHighlight}>Regístrate</Text>
+            ¿No tienes cuenta? <Text style={styles.linkHighlight}>Regístrate</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -53,10 +60,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logo: {
-    width: 80,
-    height: 80,
-  },
   bottom: {
     flex: 3,
     backgroundColor: "white",
@@ -65,12 +68,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingTop: 30,
     alignItems: 'center',
-  },
-  title: {
-    fontFamily: "Quicksand",
-    fontSize: 40,
-    fontWeight: "700",
-    color: "white",
   },
   subtitle: {
     fontFamily: "Quicksand-Semibold",
@@ -85,7 +82,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   primaryButtonText: {
     fontFamily: "Quicksand-Semibold",

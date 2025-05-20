@@ -1,8 +1,8 @@
 // app/auth/login.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useContext, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useContext, useEffect, useState } from 'react';
+import { Alert, BackHandler, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 
 
@@ -152,3 +152,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   }
 });
+

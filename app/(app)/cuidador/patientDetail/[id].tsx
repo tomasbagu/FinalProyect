@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
-import { useContext, useEffect, useState } from 'react';
-import { CareContext, AppointmentData } from '../../../../context/CareContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, getDocs, query } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppointmentData, CareContext } from '../../../../context/CareContext';
 import { db } from '../../../../utils/Firebase';
 
 const PURPLE = '#5526C9';
