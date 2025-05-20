@@ -152,7 +152,10 @@ export default function CaregiverHomeScreen() {
               const isSel = selectedPatient?.id === item.id;
               return (
                 <TouchableOpacity
-                  style={[styles.patientCard, isSel && styles.patientCardSelected]}
+                  style={[
+                    styles.patientCard,
+                    isSel && styles.patientCardSelected
+                  ]}
                   onPress={() => setSelectedPatient(item)}
                 >
                   <Image source={{ uri: item.photoUrl }} style={styles.patientAvatar} />
