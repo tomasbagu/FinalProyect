@@ -98,8 +98,8 @@ interface CareContextInterface {
     medId: string
   ) => Promise<boolean>;
   addHealthRecord: (
-    patientId: string,
-    rec: Omit<HealthRecordData, 'id' | 'dateTime'>
+  patientId: string,
+  rec: Partial<Omit<HealthRecordData, 'id' | 'dateTime'>>
   ) => Promise<string | null>;
   updateHealthRecord: (
     patientId: string,
@@ -311,19 +311,22 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addHealthRecord = async (
-    patientId: string,
-    rec: Omit<HealthRecordData, 'id' | 'dateTime'>
-  ): Promise<string | null> => {
-    try {
-      const col = collection(db, 'patients', patientId, 'healthRecords');
-      const recRef = doc(col);
-      await setDoc(recRef, { ...rec, dateTime: new Date() });
-      return recRef.id;
-    } catch (e) {
-      console.error('addHealthRecord error', e);
-      return null;
-    }
-  };
+  patientId: string,
+  rec: Partial<Omit<HealthRecordData, 'id' | 'dateTime'>>
+): Promise<string | null> => {
+  try {
+    const col = collection(db, 'patients', patientId, 'healthRecords');
+    const recRef = doc(col);
+    // rec puede tener uno o varios campos de HealthRecordData,
+    // plus dateTime que le agregamos aquí:
+    await setDoc(recRef, { ...rec, dateTime: new Date() });
+    return recRef.id;
+  } catch (e) {
+    console.error('addHealthRecord error', e);
+    return null;
+  }
+};
+
 
   const updateHealthRecord = async (
     patientId: string,
