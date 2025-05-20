@@ -91,7 +91,7 @@ export default function CaregiverHomeScreen() {
                     styles.patientCard,
                     isSel && styles.patientCardSelected
                   ]}
-                  onPress={() => setSelectedPatient(item)}
+                  onPress={() => router.push(`../cuidador/patientDetail/${item.id}`)}
                 >
                   <Image
                     source={{ uri: item.photoUrl }}
