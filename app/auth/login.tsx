@@ -2,16 +2,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
-import {
-  Alert,
-  BackHandler,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { Alert, BackHandler, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
+
+
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -45,7 +39,10 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
-        <Text style={styles.logo}>💜</Text>
+        <Image
+                  source={require("../../assets/images/logo-white.png")}
+                  style={{ width: 50, height: 50 }}
+          />
         <Text style={styles.greeting}>¡Hola!</Text>
       </View>
       <View style={styles.bottomSection}>
@@ -116,12 +113,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     padding: 30
   },
-  title: {
-    fontSize: 20,
-    color: PURPLE,
-    fontWeight: 'bold',
-    marginBottom: 20
-  },
+  title: { fontSize: 20, color: PURPLE, fontWeight: 'bold', marginBottom: 20 },
   inputContainer: {
     flexDirection: 'row',
     backgroundColor: '#F1F1F1',
@@ -160,3 +152,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   }
 });
+

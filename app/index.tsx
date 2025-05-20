@@ -1,33 +1,46 @@
 // app/auth/WelcomeScreen.js
-
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { BackHandler, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+
+  // Bloquear “atrás” tras entrar aquí
+  useEffect(() => {
+    const onBack = () => true;
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, []);
 
   return (
     <View style={styles.container}>
       {/* Sección superior púrpura con logo */}
       <View style={styles.top}>
-        {/* Reemplaza source por la ruta de tu logo si lo tienes como asset */}
+        {/* Coloca aquí tu logo si lo tienes */}
       </View>
 
       {/* Sección inferior blanca con texto y botones */}
       <View style={styles.bottom}>
-        <Text style={styles.title}>Bienvenido</Text>
+        <Text style={styles.subtitle}>¡Ingresa a Vivo+!</Text>
 
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push('/auth/login')}
+          onPress={() => router.replace('/auth/login')}
         >
           <Text style={styles.primaryButtonText}>Inicio de Sesión</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/auth/register')}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => router.replace('/auth/elderLogin')}
+        >
+          <Text style={styles.primaryButtonText}>Adulto Mayor</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.replace('/auth/register')}>
           <Text style={styles.linkText}>
-            Ya tienes cuenta? <Text style={styles.linkHighlight}>Regístrate</Text>
+            ¿No tienes cuenta? <Text style={styles.linkHighlight}>Regístrate</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -35,7 +48,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const PURPLE = '#5526C9';
+const PURPLE = "#4716B9";
 
 const styles = StyleSheet.create({
   container: {
@@ -47,39 +60,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logo: {
-    width: 80,
-    height: 80,
-  },
   bottom: {
     flex: 3,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     paddingHorizontal: 30,
     paddingTop: 30,
     alignItems: 'center',
   },
-  title: {
+  subtitle: {
+    fontFamily: "Quicksand-Semibold",
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "700",
     color: PURPLE,
-    marginBottom: 40,
+    marginBottom: 40
   },
   primaryButton: {
     backgroundColor: PURPLE,
-    width: '100%',
+    width: "100%",
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   primaryButtonText: {
-    color: 'white',
+    fontFamily: "Quicksand-Semibold",
+    color: "white",
     fontSize: 16,
     fontWeight: 'bold',
   },
   linkText: {
+    fontFamily: "Quicksand",
     fontSize: 14,
     color: '#555',
   },
