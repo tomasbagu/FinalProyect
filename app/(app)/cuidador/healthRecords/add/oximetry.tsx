@@ -1,16 +1,18 @@
 // app/(app)/cuidador/healthRecords/add/oximetry.tsx
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useContext, useState } from 'react';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import React, { useContext, useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { CareContext } from '../../../../../context/CareContext';
+import { db } from '../../../../../utils/Firebase';
 
 export default function AddOximetryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,6 +20,31 @@ export default function AddOximetryScreen() {
   const { addHealthRecord } = useContext(CareContext);
 
   const [value, setValue] = useState('');
+  const [records, setRecords] = useState<{ id: string; oxygen: number; date: Date }[]>([]);
+
+  // Suscripción en tiempo real a todos los registros de oximetría
+  useEffect(() => {
+    if (!id) return;
+    const col = collection(db, 'patients', id, 'healthRecords');
+    const q = query(col, orderBy('dateTime', 'desc'));
+    const unsub = onSnapshot(q, snap => {
+      const list = snap.docs
+        .map(d => {
+          const data = d.data() as any;
+          if (data.oxygen == null) return null;
+          return {
+            id: d.id,
+            oxygen: data.oxygen,
+            date: data.dateTime.toDate()
+          };
+        })
+        .filter(
+          (x): x is { id: string; oxygen: number; date: Date } => !!x
+        );
+      setRecords(list);
+    });
+    return () => unsub();
+  }, [id]);
 
   const onSubmit = async () => {
     if (!id || !value) {
@@ -25,10 +52,20 @@ export default function AddOximetryScreen() {
       return;
     }
     const num = parseFloat(value);
-    // GRABAMOS EN 'oxygen' para que lo recoja el summary
-    await addHealthRecord(id, { oxygen: num } as any);
-    router.back();
+    if (isNaN(num)) {
+      setValue('');
+      return;
+    }
+    await addHealthRecord(id, { oxygen: num });
+    setValue('');
   };
+
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -43,7 +80,7 @@ export default function AddOximetryScreen() {
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
-            placeholder="Ingrese saturación de oxígeno"
+            placeholder="Ingrese % de oxígeno"
             keyboardType="numeric"
             value={value}
             onChangeText={setValue}
@@ -55,18 +92,33 @@ export default function AddOximetryScreen() {
       <TouchableOpacity style={[styles.btn, styles.btnAdd]} onPress={onSubmit}>
         <Text style={styles.btnText}>Agregar</Text>
       </TouchableOpacity>
+
+      {/* Historial de registros */}
+      {records.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>Historial de Oximetría</Text>
+          <View style={styles.historyGrid}>
+            {records.map(r => (
+              <View key={r.id} style={styles.historyCard}>
+                <Text style={styles.historyDate}>{fmtDate(r.date)}</Text>
+                <Text style={styles.historyValue}>{r.oxygen}%</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:  { padding: 16, backgroundColor: '#fff' },
-  back:       { marginBottom: 12 },
-  backText:   { fontSize: 24 },
-  title:      { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
-  field:      { marginBottom: 20 },
-  label:      { fontSize: 14, marginBottom: 6, color: '#333' },
-  inputRow:   {
+  container:     { padding: 16, backgroundColor: '#fff' },
+  back:          { marginBottom: 12 },
+  backText:      { fontSize: 24 },
+  title:         { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
+  field:         { marginBottom: 20 },
+  label:         { fontSize: 14, marginBottom: 6, color: '#333' },
+  inputRow:      {
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: '#C9A84F',
@@ -74,9 +126,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8
   },
-  input:      { flex: 1, height: 40 },
-  unit:       { marginLeft: 8, color: '#333' },
-  btn:        { padding: 12, borderRadius: 8, alignItems: 'center' },
-  btnAdd:     { backgroundColor: '#C9A84F' },
-  btnText:    { color: '#fff', fontWeight: 'bold' }
+  input:         { flex: 1, height: 40 },
+  unit:          { marginLeft: 8, color: '#333' },
+  btn:           { padding: 12, borderRadius: 8, alignItems: 'center' },
+  btnAdd:        { backgroundColor: '#C9A84F', marginBottom: 24 },
+  btnText:       { color: '#fff', fontWeight: 'bold' },
+  sectionTitle:  { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: '#333' },
+  historyGrid:   { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  historyCard:   {
+    width: '48%',
+    backgroundColor: '#F6E8B1',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    alignItems: 'center'
+  },
+  historyDate:   { fontSize: 12, color: '#666', marginBottom: 4 },
+  historyValue:  { fontSize: 16, fontWeight: 'bold', color: '#333' }
 });

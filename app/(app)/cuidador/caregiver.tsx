@@ -1,4 +1,5 @@
 // app/(app)/cuidador/caregiver.tsx
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
@@ -20,8 +21,10 @@ import {
   View,
 } from "react-native";
 
+import { collection, getDocs } from "firebase/firestore";
 import { AuthContext } from "../../../context/AuthContext";
-import { CareContext } from "../../../context/CareContext";
+import { AppointmentData, CareContext } from "../../../context/CareContext";
+import { db } from "../../../utils/Firebase";
 
 const GEMINI_API_KEY = "AIzaSyAHE2ekZnimvCMVf1xeHPHgEI8fxTHJF1k";
 type Message = { text: string; sender: "user" | "ai" };
@@ -30,6 +33,12 @@ export default function CaregiverHomeScreen() {
   const router = useRouter();
   const { currentUser, logout } = useContext(AuthContext);
   const { patients, loadingPatients } = useContext(CareContext);
+
+  // Todas las citas para la sección
+  const [appointments, setAppointments] = useState<
+    (AppointmentData & { patientName: string })[]
+  >([]);
+  const [loadingApps, setLoadingApps] = useState(true);
 
   // sidebar & ayuda AI
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -44,6 +53,36 @@ export default function CaregiverHomeScreen() {
     return () => sub.remove();
   }, []);
 
+  // Cargar citas de cada paciente siempre que cambie 'patients'
+  useEffect(() => {
+    if (!patients.length) {
+      setAppointments([]);
+      setLoadingApps(false);
+      return;
+    }
+    setLoadingApps(true);
+    (async () => {
+      const all: (AppointmentData & { patientName: string })[] = [];
+      for (const p of patients) {
+        const snap = await getDocs(collection(db, "patients", p.id, "appointments"));
+        snap.docs.forEach((doc) => {
+          const data = doc.data() as any;
+          all.push({
+            id: doc.id,
+            doctorName: data.doctorName,
+            specialization: data.specialization,
+            dateTime: data.dateTime.toDate(),
+            patientName: `${p.name} ${p.surname}`,
+          });
+        });
+      }
+      // ordenar por fecha ascendente
+      all.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+      setAppointments(all);
+      setLoadingApps(false);
+    })();
+  }, [patients]);
+
   const userName = currentUser
     ? "displayName" in currentUser && currentUser.displayName
       ? currentUser.displayName
@@ -57,7 +96,7 @@ export default function CaregiverHomeScreen() {
   const handleLogout = async () => {
     await logout();
     setSidebarVisible(false);
-    router.replace("/auth/login");
+    router.replace("/");
   };
 
   const sendHelpQuery = async () => {
@@ -109,12 +148,14 @@ export default function CaregiverHomeScreen() {
         </TouchableOpacity>
       </View>
 
-
       {/* Pacientes */}
       <View style={styles.sectionContainer}>
         <View style={styles.sectionHeaderContainer}>
           <Text style={styles.sectionTitle}>Pacientes</Text>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddPatient}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleAddPatient}
+          >
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -184,6 +225,49 @@ export default function CaregiverHomeScreen() {
         )}
       </View>
 
+      {/* Citas Médicas */}
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeaderContainer}>
+          <Text style={styles.sectionTitle}>Citas Médicas</Text>
+          {/* Aquí podrías añadir un botón “+” para crear nueva cita, si quieres */}
+        </View>
+
+        {loadingApps ? (
+          <ActivityIndicator size="large" color={PURPLE} />
+        ) : appointments.length === 0 ? (
+          <Text style={styles.noPatientsText}>No hay citas registradas.</Text>
+        ) : (
+          <FlatList
+            data={appointments}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+           renderItem={({ item }) => {
+  const dt = new Date(item.dateTime);
+  const day = dt.getDate();                              // 20
+  const weekday = dt.toLocaleDateString('es-ES', { weekday: 'short' }); // Tue
+  const time = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); // 10:00 AM
+
+        return (
+          <View style={styles.appointmentRow}>
+            {/* Bloque fecha */}
+            <View style={styles.appointmentDateBlock}>
+              <Text style={styles.appointmentDay}>{day}</Text>
+              <Text style={styles.appointmentWeekday}>{weekday.toUpperCase()}</Text>
+            </View>
+            {/* Info cita */}
+            <View style={styles.appointmentInfoBlock}>
+              <Text style={styles.appointmentTime}>{time}</Text>
+              <Text style={styles.appointmentDoctor}>Dr. {item.doctorName}</Text>
+              <Text style={styles.appointmentSpec}>{item.specialization}</Text>
+            </View>
+          </View>
+        )
+      }}
+          />
+        )}
+      </View>
+
       {/* Botón Ayuda */}
       <TouchableOpacity
         style={styles.helpButton}
@@ -235,7 +319,9 @@ export default function CaregiverHomeScreen() {
                 key={idx}
                 style={[
                   styles.chatBubble,
-                  msg.sender === "user" ? styles.userBubble : styles.aiBubble,
+                  msg.sender === "user"
+                    ? styles.userBubble
+                    : styles.aiBubble,
                 ]}
               >
                 <Text
@@ -261,7 +347,10 @@ export default function CaregiverHomeScreen() {
               value={userInput}
               onChangeText={setUserInput}
             />
-            <TouchableOpacity style={styles.sendButton} onPress={sendHelpQuery}>
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={sendHelpQuery}
+            >
               <Ionicons name="send" size={24} color="#fff" />
             </TouchableOpacity>
           </KeyboardAvoidingView>
@@ -348,9 +437,22 @@ const styles = StyleSheet.create({
     marginRight: 12,
     height: 140,
   },
-  patientCardSelected: {
-    borderWidth: 2,
-    borderColor: PURPLE,
+  backgroundShapes: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 0,
+    zIndex: -1,
+    alignItems: "flex-start",
+    justifyContent: "center",
+    paddingLeft: 20,
+  },
+  shape: {
+    position: "absolute",
+    width: 70,
+    height: 70,
+    borderRadius: 30,
   },
   patientAvatar: {
     width: 110,
@@ -361,6 +463,53 @@ const styles = StyleSheet.create({
   patientInfo: { flex: 1 },
   patientName: { fontSize: 20, fontWeight: "bold", color: PURPLE },
   patientAge: { fontSize: 14, color: PURPLE },
+
+  /* sección de citas */
+  appointmentRow: {
+  flexDirection: 'row',
+  backgroundColor: '#E6E5F8',
+  borderRadius: 24,
+  marginBottom: 12,
+  height: 80,
+  overflow: 'hidden'
+},
+appointmentDateBlock: {
+  width:  60,
+  backgroundColor: '#898AEF',
+  justifyContent: 'center',
+  alignItems: 'center'
+},
+appointmentDay: {
+  fontSize: 24,
+  fontWeight: 'bold',
+  color: '#fff',
+  lineHeight: 28
+},
+appointmentWeekday: {
+  fontSize: 12,
+  color: '#fff',
+  marginTop: 4
+},
+appointmentInfoBlock: {
+  flex: 1,
+  paddingHorizontal: 16,
+  justifyContent: 'center'
+},
+appointmentTime: {
+  fontSize: 14,
+  color: '#5E5EAE',
+  marginBottom: 4
+},
+appointmentDoctor: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#333'
+},
+appointmentSpec: {
+  fontSize: 14,
+  color: '#666'
+},
+
 
   helpButton: {
     position: "absolute",
@@ -441,49 +590,4 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 8,
   },
-  backgroundShapes: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 0,
-    zIndex: -1,
-    alignItems: "flex-start",
-    justifyContent: "center",
-    paddingLeft: 20,
-  },
-
-  shape: {
-    position: "absolute",
-    width: 70,
-    height: 70,
-    borderRadius: 30,
-  },
-  modalOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.3)',
-  justifyContent: 'flex-end',
-  padding: 20,
-},
-
-logoutPanel: {
-  backgroundColor: PURPLE,
-  borderRadius: 16,
-  paddingVertical: 16,
-  paddingHorizontal: 20,
-  alignItems: 'center',
-},
-
-logoutButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-
-logoutButtonText: {
-  color: '#fff',
-  fontSize: 16,
-  fontWeight: 'bold',
-  marginLeft: 8,
-},
-
 });

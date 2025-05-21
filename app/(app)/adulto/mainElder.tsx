@@ -1,17 +1,34 @@
+// app/(app)/adulto/index.tsx
 
-import React, { useEffect, useState, useContext } from 'react';
-import { SafeAreaView, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where
+} from 'firebase/firestore';
+import React, { useContext, useEffect, useState } from 'react';
+import {
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { AuthContext } from '../../../context/AuthContext';
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../utils/Firebase';
 
 export default function MainElder() {
   const router = useRouter();
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser, logout } = useContext(AuthContext);
 
   const [time, setTime] = useState('');
   const [currentPatient, setCurrentPatient] = useState<any>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Actualizar la hora cada segundo
   useEffect(() => {
@@ -20,46 +37,37 @@ export default function MainElder() {
       const hours = now.getHours();
       const minutes = now.getMinutes();
       const ampm = hours >= 12 ? 'p.m.' : 'a.m.';
-      const formattedTime = `${String(hours % 12 || 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+      const formattedTime = `${String(hours % 12 || 12).padStart(2, '0')}:${String(
+        minutes
+      ).padStart(2, '0')} ${ampm}`;
       setTime(formattedTime);
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-useEffect(() => {
-  const fetchPatient = async () => {
-    if (!currentUser) return;
-
-    // 1) Si es ElderData (loginElder), uid **es** el ID del paciente
-    if ('role' in currentUser && currentUser.role === 'elder') {
-      const snap = await getDoc(doc(db, 'patients', currentUser.uid));
-      if (snap.exists()) {
-        setCurrentPatient({ id: snap.id, ...snap.data() });
-        console.log('Paciente (elder) encontrado:', snap.id);
-      } else {
-        console.warn('❌ ElderData sin documento en patients/', currentUser.uid);
+  // Cargar datos del paciente
+  useEffect(() => {
+    const fetchPatient = async () => {
+      if (!currentUser) return;
+      if ('role' in currentUser && currentUser.role === 'elder') {
+        const snap = await getDoc(doc(db, 'patients', currentUser.uid));
+        if (snap.exists()) {
+          setCurrentPatient({ id: snap.id, ...snap.data() });
+        }
+        return;
       }
-      return;
-    }
+      const col = collection(db, 'patients');
+      const q = query(col, where('caregiverId', '==', currentUser.uid));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        setCurrentPatient({ id: docSnap.id, ...docSnap.data() });
+      }
+    };
+    fetchPatient();
+  }, [currentUser]);
 
-    // 2) Si es usuario Firebase (caregiver/familiar), buscamos por caregiverId
-    const col = collection(db, 'patients');
-    const q = query(col, where('caregiverId', '==', currentUser.uid));
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const docSnap = snap.docs[0];
-      setCurrentPatient({ id: docSnap.id, ...docSnap.data() });
-      console.log('Paciente (caregiver) encontrado:', docSnap.id);
-    } else {
-      console.warn('❌ Ningún paciente asociado a este cuidador:', currentUser.uid);
-    }
-  };
-
-  fetchPatient();
-}, [currentUser]);
   const assignedGame = currentPatient?.assignedGame;
-
   const goToGame = () => {
     switch (assignedGame) {
       case 'game1':
@@ -76,7 +84,6 @@ useEffect(() => {
         break;
       default:
         console.warn(`Juego no reconocido: ${assignedGame}`);
-        break;
     }
   };
 
@@ -90,6 +97,15 @@ useEffect(() => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Botón del sidebar */}
+      <TouchableOpacity
+        style={styles.menuIcon}
+        onPress={() => setSidebarVisible(true)}
+      >
+        <Ionicons name="menu-outline" size={32} color="#333" />
+      </TouchableOpacity>
+
+      {/* Hora centrada */}
       <Text style={styles.time}>{time}</Text>
 
       <TouchableOpacity
@@ -103,6 +119,33 @@ useEffect(() => {
       <TouchableOpacity style={styles.emergencyButton}>
         <Text style={styles.emergencyText}>🔔 EMERGENCIA!</Text>
       </TouchableOpacity>
+
+      {/* Sidebar */}
+      <Modal
+        visible={sidebarVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSidebarVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.sidebarOverlay}
+          activeOpacity={1}
+          onPress={() => setSidebarVisible(false)}
+        />
+        <View style={styles.sidebar}>
+          <Text style={styles.sidebarTitle}>Menú</Text>
+          <TouchableOpacity
+            style={styles.sidebarItem}
+            onPress={async () => {
+              await logout();
+              router.replace('/');
+            }}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#333" />
+            <Text style={styles.sidebarItemText}>Cerrar sesión</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -112,12 +155,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: 20
+  },
+  menuIcon: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10
   },
   time: {
     fontSize: 64,
     fontWeight: 'bold',
-    marginBottom: 40
+    textAlign: 'center'
   },
   loadingText: {
     fontSize: 20,
@@ -128,6 +178,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 50,
     borderRadius: 20,
+    marginTop: 40,
     marginBottom: 30
   },
   disabledButton: {
@@ -148,6 +199,34 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold'
+  },
+  sidebarOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)'
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: '70%',
+    backgroundColor: '#fff',
+    padding: 20,
+    elevation: 5
+  },
+  sidebarTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20
+  },
+  sidebarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12
+  },
+  sidebarItemText: {
+    fontSize: 16,
+    marginLeft: 12,
+    color: '#333'
   }
 });
-

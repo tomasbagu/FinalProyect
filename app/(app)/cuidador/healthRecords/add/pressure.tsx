@@ -1,16 +1,18 @@
 // app/(app)/cuidador/healthRecords/add/pressure.tsx
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useContext, useState } from 'react';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import React, { useContext, useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { CareContext } from '../../../../../context/CareContext';
+import { db } from '../../../../../utils/Firebase';
 
 export default function AddPressureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,25 +20,56 @@ export default function AddPressureScreen() {
   const { addHealthRecord } = useContext(CareContext);
 
   const [value, setValue] = useState('');
+  const [records, setRecords] = useState<
+    { id: string; sys: number; dia: number; date: Date }[]
+  >([]);
+
+  // Suscripción en tiempo real a todos los registros de presión
+  useEffect(() => {
+    if (!id) return;
+    const col = collection(db, 'patients', id, 'healthRecords');
+    const q = query(col, orderBy('dateTime', 'desc'));
+    const unsub = onSnapshot(q, snap => {
+      const list = snap.docs
+        .map(d => {
+          const data = d.data() as any;
+          if (!data.bloodPressure) return null;
+          return {
+            id: d.id,
+            sys: data.bloodPressure.sys,
+            dia: data.bloodPressure.dia,
+            date: data.dateTime.toDate()
+          };
+        })
+        .filter(
+          (x): x is { id: string; sys: number; dia: number; date: Date } => !!x
+        );
+      setRecords(list);
+    });
+    return () => unsub();
+  }, [id]);
 
   const onSubmit = async () => {
     if (!id || !value) {
-      router.back();
       return;
     }
-    // esperamos formato "SYS/DIA"
     const [sysStr, diaStr] = value.split('/');
     const sys = parseInt(sysStr, 10);
     const dia = parseInt(diaStr, 10);
     if (isNaN(sys) || isNaN(dia)) {
-      // valor inválido
-      router.back();
+      setValue('');
       return;
     }
-    // GRABAMOS en 'bloodPressure' para que lo lea tu summary
-    await addHealthRecord(id, { bloodPressure: { sys, dia } } as any);
-    router.back();
+    await addHealthRecord(id, { bloodPressure: { sys, dia } });
+    setValue('');
   };
+
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -61,18 +94,36 @@ export default function AddPressureScreen() {
       <TouchableOpacity style={[styles.btn, styles.btnAdd]} onPress={onSubmit}>
         <Text style={styles.btnText}>Agregar</Text>
       </TouchableOpacity>
+
+      {/* Historial de registros */}
+      {records.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>Historial de Presión</Text>
+          <View style={styles.historyGrid}>
+            {records.map(r => (
+              <View key={r.id} style={styles.historyCard}>
+                <Text style={styles.historyDate}>{fmtDate(r.date)}</Text>
+                <Text style={styles.historyValue}>
+                  {r.sys}/{r.dia}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:  { padding: 16, backgroundColor: '#fff' },
-  back:       { marginBottom: 12 },
-  backText:   { fontSize: 24 },
-  title:      { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
-  field:      { marginBottom: 20 },
-  label:      { fontSize: 14, marginBottom: 6, color: '#333' },
-  inputRow:   {
+  container:     { padding: 16, backgroundColor: '#fff' },
+  back:          { marginBottom: 12 },
+  backText:      { fontSize: 24 },
+  title:         { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
+
+  field:         { marginBottom: 20 },
+  label:         { fontSize: 14, marginBottom: 6, color: '#333' },
+  inputRow:      {
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: '#C9A84F',
@@ -80,8 +131,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8
   },
-  input:      { flex: 1, height: 40 },
-  btn:        { padding: 12, borderRadius: 8, alignItems: 'center' },
-  btnAdd:     { backgroundColor: '#C9A84F' },
-  btnText:    { color: '#fff', fontWeight: 'bold' }
+  input:         { flex: 1, height: 40 },
+
+  btn:           { padding: 12, borderRadius: 8, alignItems: 'center' },
+  btnAdd:        { backgroundColor: '#C9A84F', marginBottom: 24 },
+  btnText:       { color: '#fff', fontWeight: 'bold' },
+
+  sectionTitle:  { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: '#333' },
+
+  historyGrid:   { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  historyCard:   {
+    width: '48%',
+    backgroundColor: '#F6E8B1',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    alignItems: 'center'
+  },
+  historyDate:   { fontSize: 12, color: '#666', marginBottom: 4 },
+  historyValue:  { fontSize: 16, fontWeight: 'bold', color: '#333' }
 });
