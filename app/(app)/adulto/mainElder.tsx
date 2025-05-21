@@ -1,3 +1,4 @@
+
 // app/(app)/adulto/mainElder.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -89,9 +90,9 @@ export default function MainElderScreen() {
   );
 }
 
+
 const GOLD = '#CDA30E';
 const PURPLE = '#5526C9';
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -167,3 +168,4 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   }
 });
+

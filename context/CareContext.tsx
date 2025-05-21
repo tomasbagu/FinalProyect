@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   setDoc,
@@ -29,7 +30,7 @@ export interface PatientData {
   contactName: string;
   contactPhone: string;
   photoUrl: string;
-  assignedGame?: 'game1' | 'game2';
+  assignedGame?: GameType;
   createdAt: Date;
 }
 
@@ -62,7 +63,7 @@ export interface AppointmentData {
   dateTime: Date;
 }
 
-export type GameType = 'game1' | 'game2';
+export type GameType = 'game1' | 'game2'| 'game3' | 'game4';
 
 interface CareContextInterface {
   patients: PatientData[];
@@ -414,9 +415,25 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
       return true;
     } catch (e) {
       console.error('assignGame error', e);
+
       return false;
     }
-  };
+
+    // Crea el campo assignedGame si no existe
+    await updateDoc(ref, { assignedGame: game });
+
+    // Actualiza estado local
+    setPatients(prev =>
+      prev.map(p => (p.id === patientId ? { ...p, assignedGame: game } : p))
+    );
+
+    return true;
+  } catch (e) {
+    console.error('assignGame error', e);
+    return false;
+  }
+};
+
 
   return (
     <CareContext.Provider
