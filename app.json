@@ -7,7 +7,8 @@
     "icon": "./assets/images/icon.png",
     "scheme": "finalproyect",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "jsEngine": "jsc",
     "ios": {
       "supportsTablet": true
     },
@@ -17,7 +18,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gabrielabejarano09.FinalProyect"
+      "package": "com.gabrielabejarano09.FinalProyect",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -39,6 +41,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0defc5ee-e0f5-4a43-83fe-e3996710cf8c"
+      }
     }
   }
 }

@@ -56,9 +56,9 @@ export default function MedicationsScreen() {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>{"<"}</Text>
+        <Text style={styles.backButtonText}>{"← Paciente"}</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>💊 Medicamentos</Text>
+      <Text style={styles.title}>Medicamentos</Text>
 
       <ScrollView
         horizontal
@@ -87,7 +87,6 @@ export default function MedicationsScreen() {
         renderItem={({ item }) => (
           <View style={styles.medCard}>
             <View style={styles.medInfo}>
-              <Text style={styles.medIcon}>💊</Text>
               <View>
                 <Text style={styles.medName}>{item.name}</Text>
                 <Text style={styles.medTime}>{item.schedule[0]}</Text>
@@ -113,7 +112,6 @@ export default function MedicationsScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -121,26 +119,33 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   backButton: {
-    marginBottom: 10,
+    marginBottom: 35,
+    marginTop:40
   },
   backButtonText: {
-    fontSize: 24,
+    fontSize: 20,
+    color: "black",
+    fontWeight: "bold"
   },
   title: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 20,
+    color: "black"
   },
   daysScroll: {
-    marginBottom: 20,
+    marginTop:20
+    
   },
   dayItem: {
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: PURPLE,
     borderRadius: 12,
     padding: 10,
     marginRight: 8,
+    height:100
   },
   dayItemSelected: {
     backgroundColor: LIGHT_PURPLE,
@@ -148,10 +153,12 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 14,
     color: "#333",
+    marginBottom:10,
+    fontWeight: "bold",
   },
   dateText: {
     fontSize: 16,
-    fontWeight: "bold",
+    color: "black"
   },
   medCard: {
     flexDirection: "row",

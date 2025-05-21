@@ -1,3 +1,4 @@
+import '../utils/Firebase';
 import { Stack } from "expo-router";
 import { AuthProvider } from "../context/AuthContext";
 import { ActivityIndicator, View } from "react-native";

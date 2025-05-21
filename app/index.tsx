@@ -1,19 +1,29 @@
-
+// app/auth/WelcomeScreen.js
 import { useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Image } from 'react-native';
+import React, { useEffect } from "react";
+import {
+  BackHandler,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Image
+} from "react-native";
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
+  // Bloquear “atrás” tras entrar aquí
+  useEffect(() => {
+    const onBack = () => true;
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBack);
+    return () => sub.remove();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Sección superior púrpura con logo */}
-
       <View style={styles.top}>
-        
-        
         <Image
           source={require("../assets/images/logo-white.png")}
           style={{ width: 50, height: 50 }}
@@ -21,18 +31,27 @@ export default function WelcomeScreen() {
         <Text style={styles.title}>Bienvenido</Text>
       </View>
 
+      {/* Sección inferior blanca con texto y botones */}
       <View style={styles.bottom}>
-        <Text style={styles.subtitle}>¡Ingresa a Vivo+!</Text>
+        <Text style={styles.subtitle}>Ingresa como un...</Text>
+
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push("/auth/login")}
+          onPress={() => router.replace("/auth/login")}
         >
-          <Text style={styles.primaryButtonText}>Inicio de Sesión</Text>
+          <Text style={styles.primaryButtonText}> Cuidador</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/auth/register")}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => router.replace("/auth/elderLogin")}
+        >
+          <Text style={styles.primaryButtonText}>Adulto Mayor</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.replace("/auth/register")}>
           <Text style={styles.linkText}>
-            Ya tienes cuenta?{" "}
+            ¿No tienes cuenta?{" "}
             <Text style={styles.linkHighlight}>Regístrate</Text>
           </Text>
         </TouchableOpacity>
@@ -52,11 +71,7 @@ const styles = StyleSheet.create({
     flex: 2,
     justifyContent: "center",
     alignItems: "flex-start",
-    marginLeft: 50,
-  },
-  logo: {
-    width: 80,
-    height: 80,
+    marginLeft: 40
   },
   bottom: {
     flex: 3,
@@ -66,20 +81,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingTop: 30,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
-  title: {
-    fontFamily: "Quicksand",
+  title:{
+    fontFamily: "Quicksand-Semibold",
     fontSize: 40,
     fontWeight: "700",
     color: "white",
+    marginTop: 30,
   },
   subtitle: {
     fontFamily: "Quicksand-Semibold",
     fontSize: 28,
     fontWeight: "700",
     color: PURPLE,
-    marginBottom: 40
+    marginBottom: 40,
   },
   primaryButton: {
     backgroundColor: PURPLE,
@@ -87,8 +103,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 15,
     alignItems: "center",
-    marginBottom: 20,
-    marginHorizontal:57
+    marginBottom: 15,
   },
   primaryButtonText: {
     fontFamily: "Quicksand-Semibold",
@@ -100,10 +115,13 @@ const styles = StyleSheet.create({
     fontFamily: "Quicksand",
     fontSize: 14,
     color: "#555",
-    marginLeft: 150
+    marginLeft: 140,
   },
   linkHighlight: {
     color: PURPLE,
     fontWeight: "600",
   },
+  image:{
+    marginTop:30
+  }
 });

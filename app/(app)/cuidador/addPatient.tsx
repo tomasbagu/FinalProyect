@@ -5,19 +5,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  Image,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
-
 import { CareContext } from '../../../context/CareContext';
 
 const BLOOD_TYPES = ['A+', 'A−', 'B+', 'B−', 'O+', 'O−', 'AB+', 'AB−'] as const;
@@ -35,64 +32,33 @@ export default function AddPatientScreen() {
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [loading, setLoading] = useState(false);
-
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [hasMediaPermission, setHasMediaPermission] = useState(false);
 
-  // 1) Pedir permisos al montar
   useEffect(() => {
     (async () => {
       const camPerm = await Camera.requestCameraPermissionsAsync();
       setHasCameraPermission(camPerm.status === 'granted');
-      if (camPerm.status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Se necesita acceso a la cámara.');
-      }
-
       const mediaPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       setHasMediaPermission(mediaPerm.status === 'granted');
-      if (mediaPerm.status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Se necesita acceso a la galería.');
-      }
     })();
   }, []);
 
-  // 2) Abrir cámara
-  // 2) Abrir cámara
-const takePhoto = async () => {
-  if (!hasCameraPermission) {
-    Alert.alert('Sin permiso', 'Activa el permiso de cámara primero.');
-    return;
-  }
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 0.8,
-  });
-  if (!result.canceled && result.assets.length > 0) {
-    setPhotoUri(result.assets[0].uri);
-  }
-};
+  const takePhoto = async () => {
+    if (!hasCameraPermission) return Alert.alert('Sin permiso', 'Activa la cámara.');
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!result.canceled && result.assets.length > 0) setPhotoUri(result.assets[0].uri);
+  };
 
-// 3) Abrir galería
-const pickImage = async () => {
-  if (!hasMediaPermission) {
-    Alert.alert('Sin permiso', 'Activa el permiso de galería primero.');
-    return;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 0.8,
-  });
-  if (!result.canceled && result.assets.length > 0) {
-    setPhotoUri(result.assets[0].uri);
-  }
-};
+  const pickImage = async () => {
+    if (!hasMediaPermission) return Alert.alert('Sin permiso', 'Activa la galería.');
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!result.canceled && result.assets.length > 0) setPhotoUri(result.assets[0].uri);
+  };
 
-
-  // 4) Registrar paciente
   const handleAdd = async () => {
     if (!photoUri || !name || !surname || !age || !contactName || !contactPhone) {
-      Alert.alert('Error', 'Por favor completa todos los campos.');
-      return;
+      return Alert.alert('Error', 'Completa todos los campos.');
     }
     setLoading(true);
     const patientId = await addPatient({
@@ -103,139 +69,92 @@ const pickImage = async () => {
       bloodType,
       contactName: contactName.trim(),
       contactPhone: contactPhone.trim(),
+      cedula: ''
     });
     setLoading(false);
 
-    if (patientId) {
-      router.replace('/cuidador/caregiver');
-    } else {
-      Alert.alert('Error', 'No se pudo registrar el paciente.');
-    }
+    if (patientId) router.replace('/cuidador/caregiver');
+    else Alert.alert('Error', 'No se pudo registrar el paciente.');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      {/* Header */}
+    <ScrollView style={styles.container} contentContainerStyle={{ padding: 30 }}>
+      <TouchableOpacity onPress={() => router.push("/(app)/cuidador/caregiver")} style={{ marginBottom: 20 }}>
+        <Ionicons name="arrow-back" size={28} color={"black"} />
+      </TouchableOpacity>
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={28} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Registra Paciente</Text>
+        <Text style={styles.title}>Nuevo Paciente</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.form}>
-        {/* Botones Cámara/Galería */}
-        <View style={styles.photoButtonsContainer}>
-          <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
-            <Ionicons name="camera" size={24} color="#666" />
-            <Text style={styles.photoButtonText}>Tomar Foto</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-            <Ionicons name="image" size={24} color="#666" />
-            <Text style={styles.photoButtonText}>Galería</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Vista previa */}
-        {photoUri && (
-          <Image source={{ uri: photoUri }} style={styles.photo} />
-        )}
-
-        {/* Campos de texto */}
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre"
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Apellido"
-          value={surname}
-          onChangeText={setSurname}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Edad"
-          keyboardType="number-pad"
-          value={age}
-          onChangeText={setAge}
-        />
-
-        {/* Tipo de sangre */}
-        <Text style={styles.label}>Tipo de Sangre</Text>
-        <View style={styles.pillsContainer}>
-          {BLOOD_TYPES.map((bt) => (
-            <TouchableOpacity
-              key={bt}
-              style={[
-                styles.pill,
-                bloodType === bt && styles.pillSelected,
-              ]}
-              onPress={() => setBloodType(bt)}
-            >
-              <Text
-                style={[
-                  styles.pillText,
-                  bloodType === bt && styles.pillTextSelected,
-                ]}
-              >
-                {bt}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Contacto de familiar */}
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre Familiar"
-          value={contactName}
-          onChangeText={setContactName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Teléfono Familiar"
-          keyboardType="phone-pad"
-          value={contactPhone}
-          onChangeText={setContactPhone}
-        />
-
-        {/* Botón Agregar */}
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={handleAdd}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.addButtonText}>Agregar Paciente</Text>
-          )}
+      <View style={styles.photoButtonsContainer}>
+        <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
+          <Ionicons name="camera" size={24} color="#000" />
+          <Text style={styles.photoButtonText}>Tomar Foto</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+        <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+          <Ionicons name="image" size={24} color="#000" />
+          <Text style={styles.photoButtonText}>Galería</Text>
+        </TouchableOpacity>
+      </View>
+      {photoUri && <Image source={{ uri: photoUri }} style={styles.photo} />}
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Nombre</Text>
+        <TextInput style={styles.input} value={name} onChangeText={setName} />
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Apellido</Text>
+        <TextInput style={styles.input} value={surname} onChangeText={setSurname} />
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Edad</Text>
+        <TextInput style={styles.input} keyboardType="numeric" value={age} onChangeText={setAge} />
+      </View>
+
+      <Text style={styles.label}>Tipo de sangre</Text>
+      <View style={styles.bloodContainer}>
+        {BLOOD_TYPES.map(bt => (
+          <TouchableOpacity key={bt} style={[styles.bloodType, bloodType === bt && styles.bloodTypeSelected]} onPress={() => setBloodType(bt)}>
+            <Text style={[styles.bloodText, bloodType === bt && styles.bloodTextSelected]}>{bt}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Nombre Familiar</Text>
+        <TextInput style={styles.input} value={contactName} onChangeText={setContactName} />
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Teléfono Familiar</Text>
+        <TextInput style={styles.input} keyboardType="phone-pad" value={contactPhone} onChangeText={setContactPhone} />
+      </View>
+
+      <TouchableOpacity style={styles.submitButton} onPress={handleAdd} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Agregar Paciente</Text>}
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const PURPLE = '#5526C9';
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
-  form: {
+  header: { alignItems: 'flex-start', marginBottom: 30 },
+  title: { color: "black", fontSize: 32, fontWeight: 'bold', marginTop: 10, fontFamily:"QuickSand" },
+  fieldContainer: { marginBottom: 15 },
+  input: {
+    backgroundColor: '#fff',
+    borderColor: '#000',
+    borderWidth: 1,
+    borderRadius: 15,
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    height: 45,
+    fontSize: 16,
+    fontFamily:"QuickSand"
   },
   photoButtonsContainer: {
     flexDirection: 'row',
@@ -243,18 +162,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   photoButton: {
-    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
+
     padding: 10,
-    backgroundColor: '#F1F1F1',
-    borderRadius: 12,
+    borderRadius: 15,
+    width:100,
+    borderColor: "black",
+    borderWidth:1
   },
-  photoButtonText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#333',
-  },
+  photoButtonText: { fontSize: 12, color: '#333', marginTop: 4 },
   photo: {
     width: 100,
     height: 100,
@@ -262,25 +178,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 20,
   },
-  input: {
-    backgroundColor: '#F1F1F1',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 50,
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  pillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
-  },
-  pill: {
+  label: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 5,fontFamily:"QuickSand" },
+  bloodContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
+  bloodType: {
     borderWidth: 1,
     borderColor: '#CCC',
     borderRadius: 20,
@@ -288,29 +188,17 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginRight: 8,
     marginBottom: 8,
+    backgroundColor: 'white'
   },
-  pillSelected: {
+  bloodTypeSelected: { backgroundColor: PURPLE, borderColor: '#fff' },
+  bloodText: { fontSize: 14, color: '#333', fontFamily:"QuickSand" },
+  bloodTextSelected: { color: '#fff' },
+  submitButton: {
     backgroundColor: PURPLE,
-    borderColor: PURPLE,
-  },
-  pillText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  pillTextSelected: {
-    color: '#fff',
-  },
-  addButton: {
-    backgroundColor: PURPLE,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 15,
     alignItems: 'center',
     marginTop: 10,
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: 'bold', fontFamily:"QuickSand" },
 });

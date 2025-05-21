@@ -2,15 +2,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { registerCaregiver } = useContext(AuthContext);
 
-  const [name, setName]     = useState('');
-  const [email, setEmail]   = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
@@ -25,12 +25,15 @@ export default function RegisterScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
-        <Ionicons name="heart-outline" size={48} color="white" />
+        <Image
+          source={require("../../assets/images/logo-white.png")}
+          style={{ width: 50, height: 50 }}
+        />
         <Text style={styles.greeting}>¡Hola!</Text>
       </View>
       <View style={styles.bottomSection}>
-        <Text style={styles.title}>Registro Cuidador</Text>
-        {/** Nombre **/}
+        <Text style={styles.title}>Registro de Cuidador</Text>
+
         <View style={styles.inputContainer}>
           <Ionicons name="person" size={20} color="#555" style={styles.icon} />
           <TextInput
@@ -40,7 +43,6 @@ export default function RegisterScreen() {
             onChangeText={setName}
           />
         </View>
-        {/** Email **/}
         <View style={styles.inputContainer}>
           <Ionicons name="mail" size={20} color="#555" style={styles.icon} />
           <TextInput
@@ -51,7 +53,6 @@ export default function RegisterScreen() {
             onChangeText={setEmail}
           />
         </View>
-        {/** Password **/}
         <View style={styles.inputContainer}>
           <Ionicons name="lock-closed" size={20} color="#555" style={styles.icon} />
           <TextInput
@@ -64,13 +65,13 @@ export default function RegisterScreen() {
         </View>
 
         <TouchableOpacity onPress={() => router.push('/auth/login')}>
-          <Text style={styles.linkText}>
-            ¿Ya tienes cuenta? <Text style={styles.linkHighlight}>Inicia sesión</Text>
+          <Text style={styles.registerText}>
+            ¿Ya tienes cuenta? <Text style={styles.registerLink}>Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-          <Text style={styles.registerButtonText}>Regístrate</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={handleRegister}>
+          <Text style={styles.loginButtonText}>Regístrate</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -80,34 +81,35 @@ export default function RegisterScreen() {
 const PURPLE = '#5526C9';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: PURPLE },
-  topSection: { flex: 2, justifyContent: 'center', alignItems: 'center' },
-  greeting: { color: 'white', fontSize: 32, fontWeight: 'bold', marginTop: 10 },
+  topSection: { flex: 2, justifyContent: 'center', alignItems: 'flex-start', marginLeft: '10%' },
+  greeting: { color: 'white', fontSize: 40, fontWeight: 'bold', marginTop: 10 },
   bottomSection: {
     flex: 3,
     backgroundColor: 'white',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 30
+    padding: 30,
+    justifyContent: 'center',
   },
-  title: { fontSize: 20, color: PURPLE, fontWeight: 'bold', marginBottom: 20 },
+  title: { fontFamily: "Quicksand", fontSize: 28, color: PURPLE, fontWeight: "800", marginBottom: 60 },
   inputContainer: {
     flexDirection: 'row',
     backgroundColor: '#F1F1F1',
-    borderRadius: 20,
-    paddingHorizontal: 12,
+    borderRadius: 15,
+    paddingHorizontal: 20,
     alignItems: 'center',
     marginBottom: 15,
-    height: 50
   },
-  icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16 },
-  linkText: { fontSize: 14, color: '#666', textAlign: 'right', marginBottom: 20 },
-  linkHighlight: { color: PURPLE, fontWeight: '600' },
-  registerButton: {
+  icon: { marginRight: 8 },
+  input: { flex: 1, height: 50, fontSize: 16, fontFamily: "Quicksand" },
+  registerText: { fontSize: 14, color: 'black', textAlign: 'right', marginBottom: 20, fontFamily: "Quicksand" },
+  registerLink: { color: PURPLE, fontWeight: '600', fontFamily: "Quicksand" },
+  loginButton: {
     backgroundColor: PURPLE,
     paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: 'center'
+    borderRadius: 15,
+    alignItems: 'center',
+    marginTop: 40
   },
-  registerButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
+  loginButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold', fontFamily: "Quicksand" }
 });

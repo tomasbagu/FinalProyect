@@ -17,6 +17,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     const ok = await loginCaregiver(email, password);
     if (ok) {
+      
       router.replace('../(app)/cuidador/caregiver');
     } else {
       Alert.alert('Error', 'Email o contraseña incorrectos.');
@@ -73,34 +74,37 @@ export default function LoginScreen() {
 const PURPLE = '#5526C9';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: PURPLE },
-  topSection: { flex: 2, justifyContent: 'center', alignItems: 'center' },
+  topSection: { flex: 2, justifyContent: 'center', alignItems: 'flex-start', marginLeft: '10%' },
   logo: { fontSize: 40 },
-  greeting: { color: 'white', fontSize: 32, fontWeight: 'bold', marginTop: 10 },
+  greeting: { color: 'white', fontSize: 40, fontWeight: 'bold', marginTop: 10 },
   bottomSection: {
     flex: 3,
     backgroundColor: 'white',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 30
+    padding: 30,
+    justifyContent: 'center',
+    
   },
-  title: { fontFamily:"Quicksand",fontSize: 20, color: PURPLE, fontWeight: 'bold', marginBottom: 20 },
+  title: { fontFamily:"Quicksand",fontSize: 28, color: PURPLE, fontWeight: "800", marginBottom: 60 },
   inputContainer: {
     flexDirection: 'row',
     backgroundColor: '#F1F1F1',
-    borderRadius: 20,
-    paddingHorizontal: 10,
+    borderRadius: 15,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    marginBottom: 15
+    marginBottom: 15,
   },
   icon: { marginRight: 8 },
-  input: { flex: 1, height: 50, fontSize: 16 },
-  registerText: { fontSize: 14, color: '#666', textAlign: 'right', marginBottom: 20 },
-  registerLink: { color: PURPLE, fontWeight: '600' },
+  input: { flex: 1, height: 50, fontSize: 16, fontFamily: "QuickSand",  },
+  registerText: { fontSize: 14, color: 'black', textAlign: 'right', marginBottom: 20,  fontFamily: "Quicksand" },
+  registerLink: { color: PURPLE, fontWeight: '600',  fontFamily: "Quicksand" },
   loginButton: {
     backgroundColor: PURPLE,
     paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: 'center'
+    borderRadius: 15,
+    alignItems: 'center',
+    marginTop: 40
   },
-  loginButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
+  loginButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold', fontFamily: "Quicksand" }
 });
