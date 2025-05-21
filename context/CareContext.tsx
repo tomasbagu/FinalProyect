@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   setDoc,
@@ -20,15 +21,16 @@ import { AuthContext } from './AuthContext';
 
 export interface PatientData {
   id: string;
+  cedula: string;           // cédula completa
+  code: string;             // últimos 3 dígitos de la cédula
   name: string;
   surname: string;
   age: number;
   bloodType: string;
-  code: string;
   contactName: string;
   contactPhone: string;
   photoUrl: string;
-  assignedGame?: 'game1' | 'game2';
+  assignedGame?: GameType;
   createdAt: Date;
 }
 
@@ -37,9 +39,9 @@ export interface MedicationData {
   type: 'Tableta' | 'Capsula' | 'Gotas' | 'Inyeccion';
   name: string;
   dailyDose: number;
-  schedule: string[];       // e.g. ["08:00", "14:00"]
+  schedule: string[];
   startDate: Date;
-  daysOfWeek: string[];     // e.g. ["Mon","Wed","Fri"]
+  daysOfWeek: string[];
   durationDays: number;
 }
 
@@ -61,13 +63,14 @@ export interface AppointmentData {
   dateTime: Date;
 }
 
-export type GameType = 'game1' | 'game2';
+export type GameType = 'game1' | 'game2'| 'game3' | 'game4';
 
 interface CareContextInterface {
   patients: PatientData[];
   loadingPatients: boolean;
   reloadPatients: () => Promise<void>;
   addPatient: (opts: {
+    cedula: string;
     photoUri: string;
     name: string;
     surname: string;
@@ -79,10 +82,7 @@ interface CareContextInterface {
   updatePatient: (
     patientId: string,
     data: Partial<
-      Omit<
-        PatientData,
-        'id' | 'code' | 'createdAt' | 'assignedGame' | 'photoUrl'
-      >
+      Omit<PatientData, 'id' | 'cedula' | 'code' | 'createdAt' | 'assignedGame' | 'photoUrl'>
     >
   ) => Promise<boolean>;
   assignMedication: (
@@ -99,8 +99,8 @@ interface CareContextInterface {
     medId: string
   ) => Promise<boolean>;
   addHealthRecord: (
-    patientId: string,
-    rec: Omit<HealthRecordData, 'id' | 'dateTime'>
+  patientId: string,
+  rec: Partial<Omit<HealthRecordData, 'id' | 'dateTime'>>
   ) => Promise<string | null>;
   updateHealthRecord: (
     patientId: string,
@@ -138,27 +138,7 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
 
-  // Genera un código único basado en nombre+apellido
-  const generatePatientCode = async (
-    name: string,
-    surname: string
-  ): Promise<string> => {
-    const prefix =
-      name.slice(0, 2).toUpperCase() + surname.slice(0, 2).toUpperCase();
-    let num = 1;
-    let code = `${prefix}${num}`;
-    const col = collection(db, 'patients');
-    while (true) {
-      const q = query(col, where('code', '==', code));
-      const snap = await getDocs(q);
-      if (snap.empty) break;
-      num++;
-      code = `${prefix}${num}`;
-    }
-    return code;
-  };
-
-  // Recarga la lista de pacientes; limpia spinner en finally
+  // Recarga pacientes desde Firestore
   const reloadPatients = async () => {
     setLoadingPatients(true);
     try {
@@ -173,11 +153,12 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
         const data = d.data() as any;
         return {
           id: d.id,
+          cedula: data.cedula,
+          code: data.code,
           name: data.name,
           surname: data.surname,
           age: data.age,
           bloodType: data.bloodType,
-          code: data.code,
           contactName: data.contactName,
           contactPhone: data.contactPhone,
           photoUrl: data.photoUrl,
@@ -194,12 +175,12 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Dispara recarga cuando cambia el cuidador
   useEffect(() => {
     reloadPatients();
   }, [currentUser]);
 
   const addPatient = async (opts: {
+    cedula: string;
     photoUri: string;
     name: string;
     surname: string;
@@ -210,47 +191,58 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
   }): Promise<string | null> => {
     try {
       if (!currentUser?.uid) throw new Error('No caregiver logged in');
-      const { photoUri, name, surname, age, bloodType, contactName, contactPhone } = opts;
-      const code = await generatePatientCode(name, surname);
 
-      // Sube foto a Firebase Storage
-      const resp = await fetch(photoUri);
-      const blob = await resp.blob();
-      const ref = storageRef(storage, `patients/${currentUser.uid}/${code}.jpg`);
-      await uploadBytes(ref, blob);
-      const photoUrl = await getDownloadURL(ref);
-
-      // Crea documento en Firestore
-      const patientRef = doc(collection(db, 'patients'));
-      await setDoc(patientRef, {
-        caregiverId: currentUser.uid,
+      const {
+        cedula,
+        photoUri,
         name,
         surname,
         age,
         bloodType,
+        contactName,
+        contactPhone
+      } = opts;
+
+      // identifier: last 3 digits of cedula
+      const code = cedula.slice(-3);
+
+      // upload photo
+      const resp = await fetch(photoUri);
+      const blob = await resp.blob();
+      const imgRef = storageRef(storage, `patients/${currentUser.uid}/${cedula}.jpg`);
+      await uploadBytes(imgRef, blob);
+      const photoUrl = await getDownloadURL(imgRef);
+
+      // create patient doc
+      const patientRef = doc(collection(db, 'patients'));
+      await setDoc(patientRef, {
+        caregiverId: currentUser.uid,
+        cedula,
         code,
+        name,
+        surname,
+        age,
+        bloodType,
         contactName,
         contactPhone,
         photoUrl,
         createdAt: new Date()
       });
 
-      // Actualiza estado local
-      setPatients(prev => [
-        ...prev,
-        {
-          id: patientRef.id,
-          name,
-          surname,
-          age,
-          bloodType,
-          code,
-          contactName,
-          contactPhone,
-          photoUrl,
-          createdAt: new Date()
-        }
-      ]);
+      const newPatient: PatientData = {
+        id: patientRef.id,
+        cedula,
+        code,
+        name,
+        surname,
+        age,
+        bloodType,
+        contactName,
+        contactPhone,
+        photoUrl,
+        createdAt: new Date()
+      };
+      setPatients(prev => [...prev, newPatient]);
       return patientRef.id;
     } catch (e) {
       console.error('addPatient error', e);
@@ -260,7 +252,9 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updatePatient = async (
     patientId: string,
-    data: Partial<Omit<PatientData, 'id' | 'code' | 'createdAt' | 'assignedGame' | 'photoUrl'>>
+    data: Partial<
+      Omit<PatientData, 'id' | 'cedula' | 'code' | 'createdAt' | 'assignedGame' | 'photoUrl'>
+    >
   ): Promise<boolean> => {
     try {
       const ref = doc(db, 'patients', patientId);
@@ -303,7 +297,10 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const removeMedication = async (patientId: string, medId: string): Promise<boolean> => {
+  const removeMedication = async (
+    patientId: string,
+    medId: string
+  ): Promise<boolean> => {
     try {
       const ref = doc(db, 'patients', patientId, 'medications', medId);
       await deleteDoc(ref);
@@ -315,19 +312,22 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addHealthRecord = async (
-    patientId: string,
-    rec: Omit<HealthRecordData, 'id' | 'dateTime'>
-  ): Promise<string | null> => {
-    try {
-      const col = collection(db, 'patients', patientId, 'healthRecords');
-      const recRef = doc(col);
-      await setDoc(recRef, { ...rec, dateTime: new Date() });
-      return recRef.id;
-    } catch (e) {
-      console.error('addHealthRecord error', e);
-      return null;
-    }
-  };
+  patientId: string,
+  rec: Partial<Omit<HealthRecordData, 'id' | 'dateTime'>>
+): Promise<string | null> => {
+  try {
+    const col = collection(db, 'patients', patientId, 'healthRecords');
+    const recRef = doc(col);
+    // rec puede tener uno o varios campos de HealthRecordData,
+    // plus dateTime que le agregamos aquí:
+    await setDoc(recRef, { ...rec, dateTime: new Date() });
+    return recRef.id;
+  } catch (e) {
+    console.error('addHealthRecord error', e);
+    return null;
+  }
+};
+
 
   const updateHealthRecord = async (
     patientId: string,
@@ -391,7 +391,7 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
   const removeAppointment = async (
     patientId: string,
     appId: string
-  ): Promise<boolean> => {
+  ): Promise<boolean> => {  
     try {
       const ref = doc(db, 'patients', patientId, 'appointments', appId);
       await deleteDoc(ref);
@@ -402,24 +402,35 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const assignGame = async (
-    patientId: string,
-    game: GameType
-  ): Promise<boolean> => {
-    try {
-      const ref = doc(db, 'patients', patientId);
-      await updateDoc(ref, { assignedGame: game });
-      setPatients(prev =>
-        prev.map(p =>
-          p.id === patientId ? { ...p, assignedGame: game } : p
-        )
-      );
-      return true;
-    } catch (e) {
-      console.error('assignGame error', e);
+
+const assignGame = async (
+  patientId: string,
+  game: GameType
+): Promise<boolean> => {
+  try {
+    const ref = doc(db, 'patients', patientId);
+    const docSnap = await getDoc(ref);
+
+    if (!docSnap.exists()) {
+      console.warn(`El paciente con ID ${patientId} no existe.`);
       return false;
     }
-  };
+
+    // Crea el campo assignedGame si no existe
+    await updateDoc(ref, { assignedGame: game });
+
+    // Actualiza estado local
+    setPatients(prev =>
+      prev.map(p => (p.id === patientId ? { ...p, assignedGame: game } : p))
+    );
+
+    return true;
+  } catch (e) {
+    console.error('assignGame error', e);
+    return false;
+  }
+};
+
 
   return (
     <CareContext.Provider

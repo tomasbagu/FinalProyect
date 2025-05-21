@@ -72,11 +72,19 @@ export default function PatientDetailScreen() {
           <Text style={styles.cardIcon}>💊</Text>
           <Text style={styles.cardText}>Medicamentos</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.card, { backgroundColor: YELLOW }]} onPress={() => router.push(`../../cuidador/healthRecords/${patient.id}`)}>
+
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: YELLOW }]}
+          onPress={() => router.push(`/cuidador/healthRecords/${id}`)}
+        >
           <Text style={styles.cardIcon}>📊</Text>
           <Text style={styles.cardText}>Registros de Salud</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.card, { backgroundColor: PINK }]} onPress={() => router.push(`../../cuidador/appointments/${patient.id}`)}>
+
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: PINK }]}
+          onPress={() => router.push(`/cuidador/appointments/${id}`)}
+        >
           <Text style={styles.cardIcon}>🏥</Text>
           <Text style={styles.cardText}>Citas Médicas</Text>
         </TouchableOpacity>
@@ -84,7 +92,10 @@ export default function PatientDetailScreen() {
 
       <Text style={styles.sectionTitle}>Actividades</Text>
       <View style={styles.cardRow}>
-        <TouchableOpacity style={[styles.card, { backgroundColor: BLUE }]}>
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: BLUE }]}
+          onPress={() => router.push(`/cuidador/healthRecords/${id}`)}
+        >
           <Text style={styles.cardIcon}>🏃‍♂️</Text>
           <Text style={styles.cardText}>Actualizar Estado</Text>
         </TouchableOpacity>
