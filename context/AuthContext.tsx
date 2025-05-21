@@ -39,7 +39,6 @@ interface AuthContextInterface {
   loginElder: (code: string) => Promise<boolean>;
   registerFamiliar: (name: string, email: string, pass: string) => Promise<boolean>;
   registerCaregiver: (name: string, email: string, pass: string) => Promise<boolean>;
-  registerElder: (name: string, caregiverId: string, code?: string) => Promise<string | null>;
   logout: () => Promise<void>;
 }
 
@@ -47,19 +46,20 @@ export const AuthContext = createContext<AuthContextInterface>({} as any);
 
 const ELDER_CODE_KEY = '@elder_code';
 
-export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
 
+  // Al montar, rehidratar sesión (firebase o adulto mayor)
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async fbUser => {
       if (fbUser) {
-        const docSnap = await getDoc(doc(db, 'users', fbUser.uid));
-        if (docSnap.exists()) {
+        const snap = await getDoc(doc(db, 'users', fbUser.uid));
+        if (snap.exists()) {
           setCurrentUser(fbUser);
           return;
         }
       }
-      // si no es firebase-user, intento elder
+      // Si no hay firebase-user, intento login elder con código guardado
       const savedCode = await AsyncStorage.getItem(ELDER_CODE_KEY);
       if (savedCode) {
         const ok = await _loginElderInternal(savedCode);
@@ -71,6 +71,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     return () => unsub();
   }, []);
 
+  // Registro familiar/caregiver
   const _registerCommon = async (
     name: string,
     email: string,
@@ -93,12 +94,10 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       return false;
     }
   };
+  const registerFamiliar  = (n: string, e: string, p: string) => _registerCommon(n, e, p, 'familiar');
+  const registerCaregiver = (n: string, e: string, p: string) => _registerCommon(n, e, p, 'caregiver');
 
-  const registerFamiliar = (n: string, e: string, p: string) =>
-    _registerCommon(n, e, p, 'familiar');
-  const registerCaregiver = (n: string, e: string, p: string) =>
-    _registerCommon(n, e, p, 'caregiver');
-
+  // Login común para familiar/caregiver
   const loginCommon = async (email: string, pass: string): Promise<boolean> => {
     try {
       const resp = await signInWithEmailAndPassword(auth, email, pass);
@@ -113,47 +112,38 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       return false;
     }
   };
+  const loginFamiliar  = (e: string, p: string) => loginCommon(e, p);
+  const loginCaregiver = (e: string, p: string) => loginCommon(e, p);
 
-  const loginFamiliar   = (e: string, p: string) => loginCommon(e, p);
-  const loginCaregiver  = (e: string, p: string) => loginCommon(e, p);
-
-  const registerElder = async (
-    name: string,
-    caregiverId: string,
-    code?: string
-  ): Promise<string | null> => {
-    try {
-      const newCode = code || Math.random().toString(36).substring(2, 8).toUpperCase();
-      const ref = doc(collection(db, 'elders'));
-      await setDoc(ref, {
-        name,
-        role: 'elder',
-        code: newCode,
-        caregiverId,
-        createdAt: new Date()
-      });
-      return newCode;
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
-  };
-
+  // Login Adulto Mayor: buscamos en "patients" por su code (últimos 3 dígitos de cédula)
   const _loginElderInternal = async (code: string): Promise<boolean> => {
-    const q = query(collection(db, 'elders'), where('code', '==', code));
+    const col = collection(db, 'patients');
+    const q = query(col, where('code', '==', code));
     const snap = await getDocs(q);
     if (snap.empty) return false;
-    const d = snap.docs[0].data() as Omit<ElderData, 'uid'>;
-    setCurrentUser({ uid: snap.docs[0].id, ...d });
+
+    const docSnap = snap.docs[0];
+    const data = docSnap.data() as any;
+    const elder: ElderData = {
+      uid: docSnap.id,
+      name: `${data.name} ${data.surname}`,
+      role: 'elder',
+      code: data.code,
+      caregiverId: data.caregiverId
+    };
+    setCurrentUser(elder);
     return true;
   };
 
   const loginElder = async (code: string): Promise<boolean> => {
     const ok = await _loginElderInternal(code);
-    if (ok) await AsyncStorage.setItem(ELDER_CODE_KEY, code);
+    if (ok) {
+      await AsyncStorage.setItem(ELDER_CODE_KEY, code);
+    }
     return ok;
   };
 
+  // Logout
   const logout = async () => {
     await AsyncStorage.removeItem(ELDER_CODE_KEY);
     await signOut(auth);
@@ -169,7 +159,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         loginElder,
         registerFamiliar,
         registerCaregiver,
-        registerElder,
         logout
       }}
     >

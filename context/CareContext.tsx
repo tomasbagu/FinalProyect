@@ -402,17 +402,20 @@ export const CareProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const assignGame = async (
+    patientId: string,
+    game: GameType
+  ): Promise<boolean> => {
+    try {
+      const ref = doc(db, 'patients', patientId);
+      await updateDoc(ref, { assignedGame: game });
+      setPatients(prev =>
+        prev.map(p => (p.id === patientId ? { ...p, assignedGame: game } : p))
+      );
+      return true;
+    } catch (e) {
+      console.error('assignGame error', e);
 
-const assignGame = async (
-  patientId: string,
-  game: GameType
-): Promise<boolean> => {
-  try {
-    const ref = doc(db, 'patients', patientId);
-    const docSnap = await getDoc(ref);
-
-    if (!docSnap.exists()) {
-      console.warn(`El paciente con ID ${patientId} no existe.`);
       return false;
     }
 

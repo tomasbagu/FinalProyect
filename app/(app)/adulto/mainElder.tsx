@@ -1,153 +1,171 @@
 
-import React, { useEffect, useState, useContext } from 'react';
-import { SafeAreaView, Text, TouchableOpacity, StyleSheet } from 'react-native';
+// app/(app)/adulto/mainElder.tsx
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useContext, useState } from 'react';
+import {
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { AuthContext } from '../../../context/AuthContext';
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../../utils/Firebase';
+import { CareContext, GameType } from '../../../context/CareContext';
 
-export default function MainElder() {
+export default function MainElderScreen() {
   const router = useRouter();
   const { currentUser } = useContext(AuthContext);
+  const { assignGame } = useContext(CareContext);
+  const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
 
-  const [time, setTime] = useState('');
-  const [currentPatient, setCurrentPatient] = useState<any>(null);
-
-  // Actualizar la hora cada segundo
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
-      const ampm = hours >= 12 ? 'p.m.' : 'a.m.';
-      const formattedTime = `${String(hours % 12 || 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
-      setTime(formattedTime);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-useEffect(() => {
-  const fetchPatient = async () => {
-    if (!currentUser) return;
-
-    // 1) Si es ElderData (loginElder), uid **es** el ID del paciente
-    if ('role' in currentUser && currentUser.role === 'elder') {
-      const snap = await getDoc(doc(db, 'patients', currentUser.uid));
-      if (snap.exists()) {
-        setCurrentPatient({ id: snap.id, ...snap.data() });
-        console.log('Paciente (elder) encontrado:', snap.id);
-      } else {
-        console.warn('❌ ElderData sin documento en patients/', currentUser.uid);
-      }
-      return;
-    }
-
-    // 2) Si es usuario Firebase (caregiver/familiar), buscamos por caregiverId
-    const col = collection(db, 'patients');
-    const q = query(col, where('caregiverId', '==', currentUser.uid));
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const docSnap = snap.docs[0];
-      setCurrentPatient({ id: docSnap.id, ...docSnap.data() });
-      console.log('Paciente (caregiver) encontrado:', docSnap.id);
-    } else {
-      console.warn('❌ Ningún paciente asociado a este cuidador:', currentUser.uid);
-    }
+  const handleAssign = async () => {
+    if (!selectedGame || !currentUser) return;
+    const elderId = currentUser.uid; // aquí uid del documento "patients"
+    await assignGame(elderId, selectedGame);
+    router.back();
   };
-
-  fetchPatient();
-}, [currentUser]);
-  const assignedGame = currentPatient?.assignedGame;
-
-  const goToGame = () => {
-    switch (assignedGame) {
-      case 'game1':
-        router.push('/adulto/ColorGame');
-        break;
-      case 'game2':
-        router.push('/adulto/MemoryGame');
-        break;
-      case 'game3':
-        router.push('/adulto/ColorSequence');
-        break;
-      case 'game4':
-        router.push('/adulto/NumberGame');
-        break;
-      default:
-        console.warn(`Juego no reconocido: ${assignedGame}`);
-        break;
-    }
-  };
-
-  if (!currentUser || !currentPatient) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.loadingText}>Cargando datos del paciente...</Text>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.time}>{time}</Text>
-
+      {/* Back button */}
       <TouchableOpacity
-        style={[styles.activityButton, !assignedGame && styles.disabledButton]}
-        onPress={goToGame}
-        disabled={!assignedGame}
+        style={styles.backButton}
+        onPress={() => router.back()}
       >
-        <Text style={styles.activityText}>Actividad</Text>
+        <Ionicons name="arrow-back" size={24} color="#000" />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.emergencyButton}>
-        <Text style={styles.emergencyText}>🔔 EMERGENCIA!</Text>
+      {/* Title */}
+      <View style={styles.header}>
+        <Ionicons name="game-controller" size={24} color="#000" />
+        <Text style={styles.title}>Asignar Juego</Text>
+      </View>
+      <Text style={styles.subtitle}>
+        Selecciona un juego adecuado para el adulto mayor
+      </Text>
+
+      {/* Game options */}
+      <View style={styles.gamesContainer}>
+        <TouchableOpacity
+          style={[
+            styles.card,
+            selectedGame === 'game1' && styles.cardSelected
+          ]}
+          onPress={() => setSelectedGame('game1')}
+        >
+          {/* aquí podrías poner una imagen o ícono real */}
+          <View style={styles.iconPlaceholder}>
+            <Text style={styles.iconEmoji}>🎨</Text>
+          </View>
+          <Text style={styles.cardLabel}>Juego Colores</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.card,
+            selectedGame === 'game2' && styles.cardSelected
+          ]}
+          onPress={() => setSelectedGame('game2')}
+        >
+          <View style={styles.iconPlaceholder}>
+            <Text style={styles.iconEmoji}>🧠</Text>
+          </View>
+          <Text style={styles.cardLabel}>Memoria</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Assign button */}
+      <TouchableOpacity
+        style={[
+          styles.assignButton,
+          !selectedGame && styles.assignButtonDisabled
+        ]}
+        onPress={handleAssign}
+        disabled={!selectedGame}
+      >
+        <Text style={styles.assignButtonText}>Asignar</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
+
+const GOLD = '#CDA30E';
+const PURPLE = '#5526C9';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center'
+    paddingHorizontal: 20,
+    paddingTop: 20
   },
-  time: {
-    fontSize: 64,
-    fontWeight: 'bold',
-    marginBottom: 40
+  backButton: {
+    marginBottom: 10
   },
-  loadingText: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6
+  },
+  title: {
     fontSize: 20,
-    color: '#555'
+    fontWeight: '700',
+    marginLeft: 8,
+    color: '#000'
   },
-  activityButton: {
-    backgroundColor: '#0397A7',
-    paddingVertical: 20,
-    paddingHorizontal: 50,
-    borderRadius: 20,
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20
+  },
+  gamesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 30
   },
-  disabledButton: {
+  card: {
+    flex: 1,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4
+  },
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: PURPLE
+  },
+  iconPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#EEE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  iconEmoji: {
+    fontSize: 32
+  },
+  cardLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center'
+  },
+  assignButton: {
+    backgroundColor: GOLD,
+    paddingVertical: 16,
+    borderRadius: 25,
+    alignItems: 'center'
+  },
+  assignButtonDisabled: {
     backgroundColor: '#CCC'
   },
-  activityText: {
+  assignButtonText: {
     color: '#FFF',
-    fontSize: 20,
-    fontWeight: 'bold'
-  },
-  emergencyButton: {
-    backgroundColor: '#B71C1C',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 20
-  },
-  emergencyText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold'
+    fontSize: 16,
+    fontWeight: '700'
   }
 });
 
